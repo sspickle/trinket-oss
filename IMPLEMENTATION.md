@@ -118,6 +118,23 @@ All tested against `FIRESTORE_EMULATOR_HOST=localhost:8080`:
 The `catbox-mongoose.js` file is retained for backwards compatibility when
 `db.backend: mongoose` (the default).
 
+## Deferred: dependency upgrades
+
+Several direct dependencies are deprecated and should be updated, but none block
+Cloud Run operation. Address in a future pass:
+
+| Package | Current | Action |
+|---|---|---|
+| `node-uuid` | 1.4.x | Replace with `uuid` (drop-in) |
+| `highlight.js` | 9.x | Upgrade to 11.x (API changed) |
+| `nodemailer` | 2.x | Upgrade to 6.x (API rewrote) |
+| `request` | 2.x | Replace with `node-fetch` or `got` (archived) |
+| `sinon` | 1.x | Upgrade to current (dev only) |
+| `supertest` | 0.8.x | Upgrade to 7.x (dev only) |
+
+Transitive deprecations (`tar`, `glob`, `rimraf`, etc.) will resolve when the
+packages above are upgraded.
+
 ## What still runs in-memory (not yet persisted to Firestore)
 
 The base `Store.get/set/del/expire` methods in `lib/util/store.js` are used for
@@ -145,8 +162,8 @@ is ignored when `backend: firestore`.
 ### 2. Start the emulator and app
 
 ```bash
-# Prerequisites: Node 16 (via nvm), Firebase CLI, Java 11+
-nvm use 16
+# Prerequisites: Node 20 (via nvm), Firebase CLI, Java 11+
+nvm use   # reads .nvmrc (Node 20)
 npm install --legacy-peer-deps
 npm install -g firebase-tools
 firebase setup:emulators:firestore   # one-time download
@@ -154,7 +171,8 @@ firebase setup:emulators:firestore   # one-time download
 # Terminal 1 — emulator (any Node version)
 firebase emulators:start --only firestore --project demo-trinket
 
-# Terminal 2 — app (Node 16)
+# Terminal 2 — app (Node 20), or use Docker:
+#   docker compose up
 export FIRESTORE_EMULATOR_HOST=localhost:8080
 export GOOGLE_CLOUD_PROJECT=demo-trinket
 node app.js
@@ -183,8 +201,8 @@ curl http://localhost:3000/api/trinkets  # → 401
 ### Run the script
 
 ```bash
-export GCP_PROJECT=your-gcp-project-id
-./deploy.sh
+export GOOGLE_CLOUD_PROJECT=your-gcp-project-id
+./deploy-cloudrun.sh
 ```
 
 The script handles everything in order:
@@ -202,10 +220,10 @@ The script handles everything in order:
 ### Optional overrides
 
 ```bash
-export GCP_REGION=us-east1          # default: us-central1
-export SERVICE_NAME=trinket-staging # default: trinket
-export MEMORY=1Gi                   # default: 512Mi
-export MAX_INSTANCES=20             # default: 10
+export GOOGLE_CLOUD_REGION=us-east1    # default: us-central1
+export SERVICE_NAME=trinket-staging    # default: trinket
+export MEMORY=1Gi                      # default: 512Mi
+export MAX_INSTANCES=20                # default: 10
 ```
 
 ### Environment variables set on the Cloud Run service
@@ -239,9 +257,9 @@ Slices 1–5 are complete and uncommitted on branch cloud-run-deploy:
 The remaining in-memory state is Store.get/set/del/expire (password-reset
 tokens, email verification). Low priority — users can re-request.
 
-Local testing: set db.backend: firestore in config/local.yaml, start the
-Firestore emulator, then node app.js. See "Local development setup" in
-IMPLEMENTATION.md. Node 16 required (bcrypt native addon).
+Local testing: start the Firestore emulator, then `docker compose up` (preferred)
+or `nvm use && node app.js`. See "Local development setup" in IMPLEMENTATION.md.
+Node 20 required (.nvmrc).
 
-Deploy: export GCP_PROJECT=your-project && ./deploy.sh
+Deploy: set GOOGLE_CLOUD_PROJECT in .env and run ./deploy-cloudrun.sh
 ```

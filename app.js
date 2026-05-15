@@ -58,11 +58,12 @@ const init = async () => {
     config.app.plugins.session.cookieOptions.password = process.env.SESSION_PASSWORD;
   }
 
-  if (process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_SECRET) {
+  if (process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CALLBACK_URL) {
     if (!config.app.auth) config.app.auth = {};
     if (!config.app.auth.google) config.app.auth.google = {};
     if (process.env.GOOGLE_CLIENT_ID) config.app.auth.google.clientID = process.env.GOOGLE_CLIENT_ID;
     if (process.env.GOOGLE_CLIENT_SECRET) config.app.auth.google.clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    if (process.env.GOOGLE_CALLBACK_URL) config.app.auth.google.callbackURL = process.env.GOOGLE_CALLBACK_URL;
   }
   if (!sessionPassword || sessionPassword.length < 32) {
     console.error('\n' + '='.repeat(70));

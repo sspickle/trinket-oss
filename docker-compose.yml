@@ -11,8 +11,11 @@ services:
       GOOGLE_CLOUD_PROJECT: demo-trinket
       FIRESTORE_EMULATOR_HOST: host.docker.internal:8080
       SESSION_PASSWORD: ${SESSION_PASSWORD}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_CALLBACK_URL: http://localhost:3000/auth/google/callback
       NODE_CONFIG: >-
-        {"app":{"url":{"hostname":"localhost:3000","protocol":"http"}},"db":{"backend":"firestore","firestore":{"projectId":"demo-trinket"},"redis":{"enabled":false}}}
+        {"app":{"url":{"hostname":"localhost:3000","protocol":"http"},"auth":{"google":{"callbackURL":"http://localhost:3000/auth/google/callback"}}},"db":{"backend":"firestore","firestore":{"projectId":"demo-trinket"},"redis":{"enabled":false}}}
     networks:
       - trinket
 networks:

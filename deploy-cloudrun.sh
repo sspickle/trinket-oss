@@ -105,14 +105,26 @@ elif [[ "${FIRESTORE_DB_TYPE}" != "FIRESTORE_NATIVE" ]]; then
   exit 1
 fi
 
+# Deploy Firestore indexes via Firebase CLI
+echo "--- Deploying Firestore indexes ---"
+if command -v firebase &>/dev/null && [[ -f "${SCRIPT_DIR}/firestore.indexes.json" ]]; then
+  firebase deploy --only firestore:indexes \
+    --project="${GOOGLE_CLOUD_PROJECT}" \
+    --account "$(gcloud config get-value account)" \
+    --non-interactive
+  echo "    Indexes submitted (may take 1-2 min to build in background)"
+else
+  echo "    Skipping: firebase CLI not found or firestore.indexes.json missing"
+fi
+
 # Create or update the session password secret
 echo "--- Storing session password in Secret Manager ---"
 if gcloud secrets describe "${SECRET_NAME}" --project="${GOOGLE_CLOUD_PROJECT}" 2>/dev/null; then
-  echo "${SESSION_PASSWORD}" | gcloud secrets versions add "${SECRET_NAME}" \
+  printf '%s' "${SESSION_PASSWORD}" | gcloud secrets versions add "${SECRET_NAME}" \
     --data-file=- \
     --project="${GOOGLE_CLOUD_PROJECT}"
 else
-  echo "${SESSION_PASSWORD}" | gcloud secrets create "${SECRET_NAME}" \
+  printf '%s' "${SESSION_PASSWORD}" | gcloud secrets create "${SECRET_NAME}" \
     --data-file=- \
     --replication-policy=automatic \
     --project="${GOOGLE_CLOUD_PROJECT}"
@@ -125,10 +137,10 @@ if [[ -n "${GOOGLE_CLIENT_ID:-}" ]]; then
     S_NAME="${SECRET_PAIR%%:*}"
     S_VALUE="${SECRET_PAIR#*:}"
     if gcloud secrets describe "${S_NAME}" --project="${GOOGLE_CLOUD_PROJECT}" 2>/dev/null; then
-      echo "${S_VALUE}" | gcloud secrets versions add "${S_NAME}" \
+      printf '%s' "${S_VALUE}" | gcloud secrets versions add "${S_NAME}" \
         --data-file=- --project="${GOOGLE_CLOUD_PROJECT}"
     else
-      echo "${S_VALUE}" | gcloud secrets create "${S_NAME}" \
+      printf '%s' "${S_VALUE}" | gcloud secrets create "${S_NAME}" \
         --data-file=- --replication-policy=automatic --project="${GOOGLE_CLOUD_PROJECT}"
     fi
   done
@@ -222,7 +234,8 @@ cat > "${PATCH_ENV_VARS_FILE}" <<YAML
 NODE_ENV: production
 NODE_APP_INSTANCE: cloudrun
 GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT}
-NODE_CONFIG: '{"app":{"url":{"hostname":"${HOSTNAME}"},"auth":{"google":{"callbackURL":"https://${HOSTNAME}/auth/google/callback"}}}}'
+NODE_CONFIG: '{"app":{"url":{"hostname":"${HOSTNAME}"}}}'
+GOOGLE_CALLBACK_URL: https://${HOSTNAME}/auth/google/callback
 YAML
 
 gcloud run services update "${SERVICE_NAME}" \
