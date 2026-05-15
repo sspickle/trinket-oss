@@ -15,4 +15,8 @@ export FIRESTORE_EMULATOR_HOST="${FIRESTORE_EMULATOR_HOST:-localhost:8080}"
 export GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT:-demo-trinket}"
 export NODE_ENV="${NODE_ENV:-development}"
 
+# Force Firestore backend regardless of what local.yaml says.
+# NODE_CONFIG overrides all config files in node-config.
+export NODE_CONFIG='{"db":{"backend":"firestore","firestore":{"projectId":"'"${GOOGLE_CLOUD_PROJECT}"'"},"redis":{"enabled":false}}}'
+
 exec node app.js
