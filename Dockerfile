@@ -1,5 +1,4 @@
-# Use Node 16 LTS (compatible with updated packages)
-FROM node:16-bullseye
+FROM node:20-bullseye
 
 SHELL ["/bin/bash", "-c"]
 
@@ -32,6 +31,9 @@ RUN curl -L --silent -o ./public-components.tgz \
 
 # Copy source last so code changes don't bust the layers above
 COPY --chown=trinket:trinket . .
+
+# Generate CSS assets served from public/css
+RUN npm run build:css
 
 ARG COMMIT_ID
 ARG NODE_ENV

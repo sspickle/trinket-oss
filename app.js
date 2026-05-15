@@ -15,6 +15,7 @@ if (!Promise.prototype.fail) {
   Promise.prototype.fail = Promise.prototype.catch;
 }
 
+
 // initialize the global logger
 log = require('./config/log');
 
@@ -37,9 +38,12 @@ try {
 const mailer         = require('./lib/util/mailer');
 const viewEngine     = require('./lib/util/nunjucks');
 const dbBackend    = (config.db && config.db.backend) || 'mongoose';
-const CatboxEngine = dbBackend === 'firestore'
-  ? require('./lib/util/catbox-firestore')
-  : require('./lib/util/catbox-mongoose');
+const sessionCacheBackend = (config.app.plugins.session.cache && config.app.plugins.session.cache.backend) || dbBackend;
+const CatboxEngine = sessionCacheBackend === 'memory'
+  ? { Engine: require('@hapi/catbox-memory') }
+  : sessionCacheBackend === 'firestore'
+    ? require('./lib/util/catbox-firestore')
+    : require('./lib/util/catbox-mongoose');
 const fs             = require('fs');
 const path           = require('path');
 
@@ -52,6 +56,13 @@ const init = async () => {
   const sessionPassword = process.env.SESSION_PASSWORD || config.app.plugins.session.cookieOptions.password;
   if (process.env.SESSION_PASSWORD) {
     config.app.plugins.session.cookieOptions.password = process.env.SESSION_PASSWORD;
+  }
+
+  if (process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_SECRET) {
+    if (!config.app.auth) config.app.auth = {};
+    if (!config.app.auth.google) config.app.auth.google = {};
+    if (process.env.GOOGLE_CLIENT_ID) config.app.auth.google.clientID = process.env.GOOGLE_CLIENT_ID;
+    if (process.env.GOOGLE_CLIENT_SECRET) config.app.auth.google.clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   }
   if (!sessionPassword || sessionPassword.length < 32) {
     console.error('\n' + '='.repeat(70));
@@ -81,7 +92,7 @@ const init = async () => {
     },
     // Hapi 20+ debug config format
     debug: config.isDev ? { request: ['error'] } : false,
-    // Configure MongoDB session cache
+    // Configure server-side session cache
     cache: [{
       name: 'sessions',
       provider: {

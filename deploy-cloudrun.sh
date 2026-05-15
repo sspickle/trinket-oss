@@ -20,6 +20,7 @@ set -euo pipefail
 #   export REPO_NAME=trinket               # Artifact Registry repo name
 #   export MEMORY=512Mi                    # default: 512Mi
 #   export MAX_INSTANCES=10                # default: 10
+#   export SKIP_BUILD=1                    # reuse the existing image tag
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [[ -f "${SCRIPT_DIR}/.env" ]]; then
@@ -38,19 +39,40 @@ if [[ ${#SESSION_PASSWORD} -lt 32 ]]; then
   exit 1
 fi
 
+if [[ -z "${GOOGLE_CLIENT_ID:-}" ]]; then
+  read -r -p "GOOGLE_CLIENT_ID (OAuth 2.0 client ID, blank to skip): " GOOGLE_CLIENT_ID
+fi
+if [[ -n "${GOOGLE_CLIENT_ID}" && -z "${GOOGLE_CLIENT_SECRET:-}" ]]; then
+  read -r -s -p "GOOGLE_CLIENT_SECRET: " GOOGLE_CLIENT_SECRET
+  echo
+fi
+
 GOOGLE_CLOUD_REGION="${GOOGLE_CLOUD_REGION:-us-central1}"
 SERVICE_NAME="${SERVICE_NAME:-trinket}"
 REPO_NAME="${REPO_NAME:-trinket}"
 MEMORY="${MEMORY:-512Mi}"
 MAX_INSTANCES="${MAX_INSTANCES:-10}"
+SKIP_BUILD="${SKIP_BUILD:-false}"
 SECRET_NAME="trinket-session-password"
+GOOGLE_CLIENT_ID_SECRET="trinket-google-client-id"
+GOOGLE_CLIENT_SECRET_SECRET="trinket-google-client-secret"
 IMAGE="${GOOGLE_CLOUD_REGION}-docker.pkg.dev/${GOOGLE_CLOUD_PROJECT}/${REPO_NAME}/${SERVICE_NAME}"
+ENV_VARS_FILE=$(mktemp "${TMPDIR:-/tmp}/trinket-cloudrun-env.XXXXXX")
+PATCH_ENV_VARS_FILE=""
+cleanup() {
+  rm -f "${ENV_VARS_FILE}"
+  if [[ -n "${PATCH_ENV_VARS_FILE}" ]]; then
+    rm -f "${PATCH_ENV_VARS_FILE}"
+  fi
+}
+trap cleanup EXIT
 
 echo "=== Deploying Trinket to Cloud Run ==="
 echo "Project:  ${GOOGLE_CLOUD_PROJECT}"
 echo "Region:   ${GOOGLE_CLOUD_REGION}"
 echo "Service:  ${SERVICE_NAME}"
 echo "Image:    ${IMAGE}"
+echo "Build:    $([[ "${SKIP_BUILD}" =~ ^(1|true|yes)$ ]] && echo "skip" || echo "run")"
 echo ""
 
 # Ensure required APIs are enabled
@@ -66,13 +88,22 @@ gcloud services enable \
 
 # Create Firestore Native database if it doesn't exist
 echo "--- Ensuring Firestore Native database ---"
-gcloud firestore databases describe \
-  --project="${GOOGLE_CLOUD_PROJECT}" 2>/dev/null \
-|| gcloud firestore databases create \
+FIRESTORE_DB_TYPE=$(gcloud firestore databases describe \
+  --project="${GOOGLE_CLOUD_PROJECT}" \
+  --format='value(type)' 2>/dev/null || true)
+
+if [[ -z "${FIRESTORE_DB_TYPE}" ]]; then
+  gcloud firestore databases create \
   --location="${GOOGLE_CLOUD_REGION}" \
   --type=firestore-native \
   --project="${GOOGLE_CLOUD_PROJECT}" \
   --quiet
+elif [[ "${FIRESTORE_DB_TYPE}" != "FIRESTORE_NATIVE" ]]; then
+  echo "Error: project ${GOOGLE_CLOUD_PROJECT} has a default database in ${FIRESTORE_DB_TYPE}." >&2
+  echo "This Cloud Run deployment expects Firestore Native mode." >&2
+  echo "Create a fresh GCP project with Firestore Native, then update GOOGLE_CLOUD_PROJECT." >&2
+  exit 1
+fi
 
 # Create or update the session password secret
 echo "--- Storing session password in Secret Manager ---"
@@ -87,6 +118,22 @@ else
     --project="${GOOGLE_CLOUD_PROJECT}"
 fi
 
+# Store Google OAuth credentials in Secret Manager (only if provided)
+if [[ -n "${GOOGLE_CLIENT_ID:-}" ]]; then
+  echo "--- Storing Google OAuth credentials in Secret Manager ---"
+  for SECRET_PAIR in "${GOOGLE_CLIENT_ID_SECRET}:${GOOGLE_CLIENT_ID}" "${GOOGLE_CLIENT_SECRET_SECRET}:${GOOGLE_CLIENT_SECRET}"; do
+    S_NAME="${SECRET_PAIR%%:*}"
+    S_VALUE="${SECRET_PAIR#*:}"
+    if gcloud secrets describe "${S_NAME}" --project="${GOOGLE_CLOUD_PROJECT}" 2>/dev/null; then
+      echo "${S_VALUE}" | gcloud secrets versions add "${S_NAME}" \
+        --data-file=- --project="${GOOGLE_CLOUD_PROJECT}"
+    else
+      echo "${S_VALUE}" | gcloud secrets create "${S_NAME}" \
+        --data-file=- --replication-policy=automatic --project="${GOOGLE_CLOUD_PROJECT}"
+    fi
+  done
+fi
+
 # Grant IAM roles to the Cloud Run compute SA
 echo "--- Granting IAM roles ---"
 PROJECT_NUMBER=$(gcloud projects describe "${GOOGLE_CLOUD_PROJECT}" --format='value(projectNumber)')
@@ -97,11 +144,15 @@ gcloud projects add-iam-policy-binding "${GOOGLE_CLOUD_PROJECT}" \
   --role="roles/datastore.user" \
   --quiet
 
-gcloud secrets add-iam-policy-binding "${SECRET_NAME}" \
-  --project="${GOOGLE_CLOUD_PROJECT}" \
-  --member="serviceAccount:${COMPUTE_SA}" \
-  --role="roles/secretmanager.secretAccessor" \
-  --quiet
+for S in "${SECRET_NAME}" "${GOOGLE_CLIENT_ID_SECRET}" "${GOOGLE_CLIENT_SECRET_SECRET}"; do
+  if gcloud secrets describe "${S}" --project="${GOOGLE_CLOUD_PROJECT}" 2>/dev/null; then
+    gcloud secrets add-iam-policy-binding "${S}" \
+      --project="${GOOGLE_CLOUD_PROJECT}" \
+      --member="serviceAccount:${COMPUTE_SA}" \
+      --role="roles/secretmanager.secretAccessor" \
+      --quiet
+  fi
+done
 
 # Create Artifact Registry repo if it doesn't exist
 echo "--- Ensuring Artifact Registry repository ---"
@@ -114,19 +165,34 @@ gcloud artifacts repositories describe "${REPO_NAME}" \
   --project="${GOOGLE_CLOUD_PROJECT}" \
   --quiet
 
-# Configure Docker auth for Artifact Registry
-echo "--- Configuring Docker auth ---"
-gcloud auth configure-docker "${GOOGLE_CLOUD_REGION}-docker.pkg.dev" --quiet
+if [[ "${SKIP_BUILD}" =~ ^(1|true|yes)$ ]]; then
+  echo "--- Skipping image build; reusing ${IMAGE} ---"
+else
+  # Configure Docker auth for Artifact Registry
+  echo "--- Configuring Docker auth ---"
+  gcloud auth configure-docker "${GOOGLE_CLOUD_REGION}-docker.pkg.dev" --quiet
 
-# Build and push with Cloud Build
-echo "--- Building image with Cloud Build ---"
-gcloud builds submit \
-  --tag="${IMAGE}" \
-  --project="${GOOGLE_CLOUD_PROJECT}" \
-  --quiet
+  # Build and push with Cloud Build
+  echo "--- Building image with Cloud Build ---"
+  gcloud builds submit \
+    --tag="${IMAGE}" \
+    --project="${GOOGLE_CLOUD_PROJECT}" \
+    --quiet
+fi
 
 # Deploy to Cloud Run
 echo "--- Deploying to Cloud Run ---"
+cat > "${ENV_VARS_FILE}" <<YAML
+NODE_ENV: production
+NODE_APP_INSTANCE: cloudrun
+GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT}
+YAML
+
+SECRETS_ARG="SESSION_PASSWORD=${SECRET_NAME}:latest"
+if [[ -n "${GOOGLE_CLIENT_ID:-}" ]]; then
+  SECRETS_ARG="${SECRETS_ARG},GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID_SECRET}:latest,GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET_SECRET}:latest"
+fi
+
 gcloud run deploy "${SERVICE_NAME}" \
   --image="${IMAGE}" \
   --region="${GOOGLE_CLOUD_REGION}" \
@@ -138,8 +204,8 @@ gcloud run deploy "${SERVICE_NAME}" \
   --cpu=1 \
   --min-instances=0 \
   --max-instances="${MAX_INSTANCES}" \
-  --set-env-vars="NODE_ENV=production,NODE_APP_INSTANCE=cloudrun,GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT}" \
-  --set-secrets="SESSION_PASSWORD=${SECRET_NAME}:latest" \
+  --env-vars-file="${ENV_VARS_FILE}" \
+  --set-secrets="${SECRETS_ARG}" \
   --quiet
 
 # Get the service URL
@@ -151,10 +217,18 @@ SERVICE_URL=$(gcloud run services describe "${SERVICE_NAME}" \
 # Patch NODE_CONFIG with the service hostname
 echo "--- Patching NODE_CONFIG with service hostname ---"
 HOSTNAME=$(echo "${SERVICE_URL}" | sed 's|https://||')
+PATCH_ENV_VARS_FILE=$(mktemp "${TMPDIR:-/tmp}/trinket-cloudrun-env.XXXXXX")
+cat > "${PATCH_ENV_VARS_FILE}" <<YAML
+NODE_ENV: production
+NODE_APP_INSTANCE: cloudrun
+GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT}
+NODE_CONFIG: '{"app":{"url":{"hostname":"${HOSTNAME}"},"auth":{"google":{"callbackURL":"https://${HOSTNAME}/auth/google/callback"}}}}'
+YAML
+
 gcloud run services update "${SERVICE_NAME}" \
   --region="${GOOGLE_CLOUD_REGION}" \
   --project="${GOOGLE_CLOUD_PROJECT}" \
-  --set-env-vars="NODE_ENV=production,NODE_APP_INSTANCE=cloudrun,GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT},NODE_CONFIG={\"app\":{\"url\":{\"hostname\":\"${HOSTNAME}\"}}}" \
+  --env-vars-file="${PATCH_ENV_VARS_FILE}" \
   --quiet
 
 echo ""
