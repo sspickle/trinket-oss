@@ -5,6 +5,11 @@ var mongoose = require('mongoose'),
     dbconfig = require('config').db;
 
 function connect() {
+  // Skip MongoDB when using a non-Mongoose db backend (e.g. Firestore)
+  if (dbconfig.backend && dbconfig.backend !== 'mongoose') {
+    return;
+  }
+
   // Support a full connection URI (e.g. MongoDB Atlas mongodb+srv://...)
   // via config, env var MONGODB_URI, or fall back to host/port construction
   var connectStr = dbconfig.mongo.uri

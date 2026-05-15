@@ -1,27 +1,28 @@
 # Cloud Run deployment configuration
-# Used with NODE_ENV=cloudrun
+# Loaded by node-config when NODE_APP_INSTANCE=cloudrun (set by deploy.sh).
+# NODE_ENV is set to 'production' by deploy.sh.
 #
-# Secrets (MONGODB_URI, SESSION_PASSWORD) should be passed via
-# environment variables or Google Secret Manager, not stored here.
+# Secrets: SESSION_PASSWORD is injected from Google Secret Manager.
+# app.url.hostname: injected via NODE_CONFIG env var by deploy.sh after the
+#   service URL is known. No manual editing required.
 
 app:
   url:
     protocol: https
-    hostname: ''   # Set to your Cloud Run URL after first deploy
+    hostname: ''   # Overridden at runtime via NODE_CONFIG — see deploy.sh
     port:
   hostname: 0.0.0.0
   plugins:
     session:
       cookieOptions:
-        # Injected at runtime via NODE_CONFIG or SESSION_PASSWORD env var
-        password: ''
+        password: ''   # Injected via SESSION_PASSWORD env var from Secret Manager
         domain: ''
         isSecure: true
         isSameSite: 'None'
 
 db:
-  mongo:
-    # Injected at runtime via MONGODB_URI env var
-    uri: ''
+  backend: firestore   # No MongoDB required
   redis:
     enabled: false
+  # db.firestore.projectId is not set here; the Firestore SDK reads
+  # GOOGLE_CLOUD_PROJECT automatically on Cloud Run.

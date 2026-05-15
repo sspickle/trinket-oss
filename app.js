@@ -36,7 +36,10 @@ try {
 }
 const mailer         = require('./lib/util/mailer');
 const viewEngine     = require('./lib/util/nunjucks');
-const CatboxMongoose = require('./lib/util/catbox-mongoose');
+const dbBackend    = (config.db && config.db.backend) || 'mongoose';
+const CatboxEngine = dbBackend === 'firestore'
+  ? require('./lib/util/catbox-firestore')
+  : require('./lib/util/catbox-mongoose');
 const fs             = require('fs');
 const path           = require('path');
 
@@ -83,7 +86,7 @@ const init = async () => {
     cache: [{
       name: 'sessions',
       provider: {
-        constructor: CatboxMongoose.Engine,
+        constructor: CatboxEngine.Engine,
         options: {}
       }
     }]

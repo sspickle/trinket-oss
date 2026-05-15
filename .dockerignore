@@ -1,1 +1,7 @@
 **/.git
+node_modules
+config/local.yaml
+config/local.yaml~
+config/local.*.yaml
+*.log
+.env
