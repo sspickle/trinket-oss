@@ -73,7 +73,7 @@ selects the adapter at boot time via `config.db.backend`.
   using in-memory fallback (unchanged).
 - `test/smoke-firestore-sessions.js` — 16-case smoke test covering both modules.
 
-### Slice 5 — Cloud Run deployment prep (current branch)
+### Slice 5 — Cloud Run deployment prep (commit fe21eea)
 - `config/cloudrun.yaml` — replaced MongoDB URI placeholder with
   `db.backend: firestore` and `db.redis.enabled: false`. `db.firestore.projectId`
   is intentionally absent; the Firestore SDK reads `GOOGLE_CLOUD_PROJECT`
@@ -82,6 +82,81 @@ selects the adapter at boot time via `config.db.backend`.
 - `deploy.sh` — end-to-end deploy script (see "Deploying to Cloud Run" below).
 - `.dockerignore` — added `node_modules`, `config/local.yaml` (and variants),
   `.env`, `*.log` to prevent secrets and build artifacts from entering the image.
+
+### Slice 6 — GCS snapshot storage (commit 9f8bf21)
+- `lib/util/storage.js` — new module wrapping `@google-cloud/storage` v7.
+  `uploadSnapshot(filename, buffer)` saves PNG to the `trinket-snapshots` GCS
+  bucket. `snapshotUrl()` checks `STORAGE_EMULATOR_HOST`; if set it returns the
+  Firebase Storage emulator URL using `STORAGE_PUBLIC_HOST` (browser-facing host
+  may differ from the container-internal upload host).
+- `lib/controllers/trinket.js` — snapshot handler now calls
+  `StorageUtil.uploadSnapshot()` instead of S3. Fixed `new Buffer()` →
+  `Buffer.from()`.
+- `config/default.yaml` — added `gcs.buckets.snapshots.{name,host}`.
+- `firebase.json` / `storage.rules` — added storage emulator config with
+  permissive dev rules.
+- `emulator.sh` — now starts `--only firestore,storage`.
+- `dev-docker.sh` — sources `.env`; translates `localhost:9199` →
+  `host.docker.internal:9199` for container uploads; passes
+  `STORAGE_PUBLIC_HOST=http://localhost:9199` for browser-facing URLs.
+
+**Production**: set `gcs.buckets.snapshots.name` to the real GCS bucket name;
+the SDK uses Application Default Credentials automatically on Cloud Run.
+
+### Slice 7 — WebVPython-only mode + Google OAuth (commit 9f8bf21)
+- `config/default.yaml` — `features.trinkets`: `glowscript: true`, all others
+  `false`.
+- `dev-docker.sh` — `NODE_CONFIG` now includes `features.trinkets` overrides
+  and `app.auth.google.{clientID,clientSecret,callbackURL}` sourced from `.env`.
+  This avoids putting secrets in `config/local.yaml` (which must never be
+  committed).
+- `public-components` updated to v1.1.0 (includes Ace editor fix; removed
+  manual workaround from Dockerfile).
+
+### Slice 8 — Legacy import feature (commits 1e161b7, ee01ab0, 4168551, 64c4d04)
+
+Supports users migrating from the old MongoDB-based trinket server. Two API
+endpoints + a UI at `/account/import`.
+
+**Schema changes**:
+- `lib/models/trinket.js` — `legacyShortCode: { type: String, sparse index }`
+- `lib/models/material.js` — `unresolvedLegacyRefs: [String]`
+
+**`POST /api/imports/trinkets`** (multipart, `file` field, up to 50 MB):
+- Accepts the `trinket-export-*.zip` produced by the old server's bulk-export
+  feature.
+- Zip structure: `manifest.json` + `{lang}/{name}_{shortCode}/metadata.json` +
+  code files.
+- For each trinket in the manifest: skips if `legacyShortCode` already exists
+  (idempotent); otherwise creates a new `Trinket` doc with `legacyShortCode` set
+  to the old shortCode and a freshly generated `shortCode`.
+- After import, scans `Material` docs whose `unresolvedLegacyRefs` contain any of
+  the newly imported shortCodes, rewrites the `trinket.io/embed` URLs to local
+  server URLs, and clears the resolved entries.
+- Returns `{ imported, skipped, failed, mapping: {oldCode → newCode}, patched }`.
+
+**`POST /api/imports/course`** (multipart, `file` + optional `name` + optional
+`force`, up to 50 MB):
+- Accepts the `*-md.zip` course export from the old server.
+- Zip structure: `chapter-{N}/{filename}.md` files containing markdown with
+  `<iframe src="https://trinket.io/embed/{lang}/{shortCode}">` embeds.
+- Validates all embed shortCodes against `legacyShortCode` in the DB.
+- Without `force`: if any refs are unresolved, returns
+  `{ status: 'missing_refs', missing: [...] }` so the caller can import
+  the missing trinkets first.
+- With `force=true`: creates the full Course → Lessons → Materials hierarchy,
+  rewrites resolved URLs to `{app.url}/embed/{lang}/{newShortCode}`, and stores
+  unresolved old shortCodes in `material.unresolvedLegacyRefs` for later
+  auto-patching.
+- Returns `{ status: 'ok', courseId, slug, ownerSlug, url }`.
+
+**UI** (`lib/views/users/includes/import.html`):
+- Added "Import" to the account settings sidebar (`lib/views/users/account.html`).
+- Step 1: file picker → trinket import, shows result table.
+- Step 2: file picker + optional course name → course import; on `missing_refs`
+  shows the unresolved shortCodes and an "Import anyway" button that re-submits
+  with `force=true`.
+- Plain jQuery + Foundation CSS; no new dependencies.
 
 ## Smoke test results (Firestore emulator, Slices 1–2)
 
@@ -247,19 +322,26 @@ Paste this at the start of a new Claude Code session in this repo:
 We're deploying trinket-oss to Google Cloud Run backed by Firestore Native
 (no MongoDB, no Redis). Read IMPLEMENTATION.md for full context.
 
-Slices 1–5 are complete and uncommitted on branch cloud-run-deploy:
-- Slice 1–2: Firestore model-layer adapter (lib/db/firestore-backend.js)
-- Slice 3: Firestore session store (lib/util/catbox-firestore.js);
-           MongoDB connection skipped in config/db.js when backend=firestore
+Branch: cloud-run-deploy. All slices are committed.
+
+Slices completed:
+- Slices 1–2: Firestore model-layer adapter (lib/db/firestore-backend.js)
+- Slice 3: Firestore session store (lib/util/catbox-firestore.js)
 - Slice 4: Firestore slug stores (lib/util/store/firestore-client.js)
-- Slice 5: Cloud Run deploy script (deploy.sh) and config (config/cloudrun.yaml)
+- Slice 5: Cloud Run deploy script (deploy.sh, config/cloudrun.yaml)
+- Slice 6: GCS snapshot storage (lib/util/storage.js, @google-cloud/storage v7)
+- Slice 7: WebVPython-only mode; Google OAuth wired via .env → NODE_CONFIG
+- Slice 8: Legacy import feature — POST /api/imports/trinkets + course,
+           UI at /account/import, legacyShortCode on Trinket model,
+           unresolvedLegacyRefs on Material model, auto-patch on late import
 
-The remaining in-memory state is Store.get/set/del/expire (password-reset
-tokens, email verification). Low priority — users can re-request.
+Local dev: ./emulator.sh (terminal 1), ./dev-docker.sh (terminal 2).
+Rebuild image after source changes: ./dev-docker.sh --build
 
-Local testing: start the Firestore emulator, then `docker compose up` (preferred)
-or `nvm use && node app.js`. See "Local development setup" in IMPLEMENTATION.md.
-Node 20 required (.nvmrc).
+Known deferred work:
+- Store.get/set/del/expire (password reset tokens) still in-memory — lost on
+  Cloud Run restart. Low priority; users can re-request.
+- Dependency upgrades (see "Deferred" table in IMPLEMENTATION.md).
 
 Deploy: set GOOGLE_CLOUD_PROJECT in .env and run ./deploy-cloudrun.sh
 ```
