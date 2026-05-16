@@ -4,10 +4,10 @@ features:
   accessibilityToggle: false  # Show accessibility toggle in embed toolbar (for screen reader mode)
   trinkets:
     # Client-side languages - work out of the box
-    python: true       # Skulpt-based Python 2/3
-    html: true         # HTML/CSS/JS
+    python: false      # Skulpt-based Python 2/3
+    html: false        # HTML/CSS/JS
     blocks: false      # Block-based coding
-    glowscript: true   # 3D graphics with GlowScript/VPython
+    glowscript: true   # 3D graphics with GlowScript/VPython (WebVPython)
     glowscript-blocks: false
     console: false     # Python console/REPL
     music: false       # EarSketch music coding
