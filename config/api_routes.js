@@ -1535,12 +1535,12 @@ module.exports = [
       auth: 'session',
       payload : {
         maxBytes : 50 * (1024 * 1024), // 50MB
-        output   : 'data',
+        output   : 'file',
         parse    : true
       },
       validate : {
         payload : {
-          file : Joi.binary().required()
+          file : Joi.any().required()
         }
       }
     }
@@ -1551,12 +1551,12 @@ module.exports = [
       auth: 'session',
       payload : {
         maxBytes : 50 * (1024 * 1024), // 50MB
-        output   : 'data',
+        output   : 'file',
         parse    : true
       },
       validate : {
         payload : {
-          file  : Joi.binary().required(),
+          file  : Joi.any().required(),
           name  : Joi.string().max(140).optional(),
           force : Joi.boolean().optional()
         }
