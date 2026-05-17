@@ -19,7 +19,7 @@ app:
         isSecure: true
         isSameSite: 'None'
       cache:
-        backend: memory
+        backend: firestore
 
 db:
   backend: firestore   # No MongoDB required
