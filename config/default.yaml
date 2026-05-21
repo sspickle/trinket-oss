@@ -361,6 +361,7 @@ workers:
     outputDir: '/tmp/' # should be readable by nginx
     templateUrl: 'http://127.0.0.1/tmp/' # should be an nginx alias pointing to outputDir
 db:
+  backend: firestore
   mongo:
     host: localhost
     port: 27017

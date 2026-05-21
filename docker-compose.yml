@@ -6,6 +6,12 @@ services:
     ports:
       - 3000:3000
     container_name: trinket
+    command: node app.js
+    volumes:
+      - .:/usr/local/node/trinket
+      - /usr/local/node/trinket/node_modules
+      - /usr/local/node/trinket/public/css
+      - /usr/local/node/trinket/public/components
     environment:
       NODE_ENV: development
       GOOGLE_CLOUD_PROJECT: demo-trinket
@@ -15,9 +21,4 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_CALLBACK_URL: http://localhost:3000/auth/google/callback
       NODE_CONFIG: >-
-        {"app":{"url":{"hostname":"localhost:3000","protocol":"http"},"auth":{"google":{"callbackURL":"http://localhost:3000/auth/google/callback"}}},"db":{"backend":"firestore","firestore":{"projectId":"demo-trinket"},"redis":{"enabled":false}}}
-    networks:
-      - trinket
-networks:
-  trinket:
-    driver: bridge
+        {"app":{"url":{"hostname":"localhost","protocol":"http","port":3000},"plugins":{"session":{"cache":{"backend":"memory"}}},"auth":{"google":{"callbackURL":"http://localhost:3000/auth/google/callback"}}},"db":{"backend":"firestore","firestore":{"projectId":"demo-trinket"},"redis":{"enabled":false}}}

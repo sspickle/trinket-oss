@@ -5,6 +5,7 @@ app:
     level: error
   trinketLibraryUser: testlibraryuser
 db:
+  backend: mongoose
   mongo:
     host: localhost
     port: 27017

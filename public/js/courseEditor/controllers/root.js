@@ -49,7 +49,7 @@
     this.$scope.isOwner          = trinketRoles.hasRole("course-owner", "course", { id : this.$scope.courseId });
     this.$scope.canDeleteCourse  = trinketRoles.hasPermission("delete-course", "course", { id : this.$scope.courseId });
     this.$scope.canUpdateCourse  = trinketRoles.hasPermission("update-course-details", "course", { id : this.$scope.courseId });
-    this.$scope.canUpdateContent = trinketRoles.hasPermission("manage-course-content", "course", { id : this.$scope.courseId });
+    this.$scope.canUpdateContent = this.$scope.canEdit || trinketRoles.hasPermission("manage-course-content", "course", { id : this.$scope.courseId });
     this.$scope.canManageAccess  = trinketRoles.hasPermission("manage-course-access", "course", { id : this.$scope.courseId });
     this.$scope.canCopyThisCourse = this.$scope.canCopyThisCourse || trinketRoles.hasPermission("make-course-copy", "course", { id : this.$scope.courseId });
     this.$scope.canArchiveThisCourse = this.$scope.isOwner;

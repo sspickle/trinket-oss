@@ -19,6 +19,7 @@ if (!Promise.prototype.fail) {
 // initialize the global logger
 log = require('./config/log');
 
+const startupCheck   = require('./lib/util/startup-check');
 const Hapi           = require('@hapi/hapi');
 const Boom           = require('@hapi/boom');
 const Inert          = require('@hapi/inert');
@@ -319,6 +320,12 @@ const init = async () => {
 
   // Register routes
   server.route(config.routes);
+
+  // Verify backend connectivity before accepting traffic
+  const checkPassed = await startupCheck.run();
+  if (!checkPassed) {
+    process.exit(1);
+  }
 
   // Start the server
   if (config.app.start) {
