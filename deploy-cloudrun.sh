@@ -235,7 +235,7 @@ cat > "${PATCH_ENV_VARS_FILE}" <<YAML
 NODE_ENV: production
 NODE_APP_INSTANCE: cloudrun
 GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT}
-NODE_CONFIG: '{"app":{"url":{"hostname":"${HOSTNAME}"}},"auth":{"adminEmails":${ADMIN_EMAILS:-[]}}}'
+NODE_CONFIG: '{"app":{"url":{"hostname":"${HOSTNAME}"}},"auth":{"adminEmails":${ADMIN_EMAILS:-[]},"firebase":{"clientConfig":${FIREBASE_CLIENT_CONFIG:-{}}}}}'
 GOOGLE_CALLBACK_URL: https://${HOSTNAME}/auth/google/callback
 YAML
 
