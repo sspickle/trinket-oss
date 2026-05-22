@@ -346,41 +346,6 @@
 
   <div id="access-code-messages"></div>
 
-  <div class="row">
-    <div class="small-12 columns">
-      <form name="access-code-form">
-        <fieldset ng-class="{'border-on':formToggles.accessCode}" class="border">
-          <legend class="clickable-legend" ng-click="toggleForm('accessCode')"><i ng-class="{'hide':formToggles.accessCode}" class="fa fa-chevron-right"></i> Share Access Code</legend>
-          <div ng-class="{'show-fields':formToggles.accessCode}" class="collapsed-form">
-            <div class="row">
-              <div class="small-12 columns">
-                <p>Share this access code or link with your students. They'll be able to enter the code from their home page. The link will automatically add them to your course.</p>
-              </div>
-            </div>
-            <div class="row collapse">
-              <div class="small-4 columns">
-                <p class="join-code faux-input">{{ accessCode }}</p>
-              </div>
-              <div class="small-4 columns end">
-                <a class="button secondary collapse postfix" ng-click="generateAccessCode()"><i ng-class="generatingCode ? 'fa fa-circle-o-notch fa-spin' : 'fa fa-code'"></i> Generate New Access Code</a>
-              </div>
-            </div>
-            <div class="row">
-              <div class="small-12 columns">
-                <p class="smaller">{{ accessCodeUrl }}</p>
-              </div>
-            </div>
-            <div class="row" ng-show="accessCode.length">
-              <div class="small-12 columns">
-                <p class="smaller no-margin">Note: Changing the access code invalidates previous access codes.</p>
-              </div>
-            </div>
-          </div>
-        </fieldset>
-      </form>
-    </div>
-  </div>
-
   <div id="add-user-messages"></div>
 
   <div class="row">
