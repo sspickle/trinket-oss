@@ -32,6 +32,21 @@ FORCE_BUILD=false
 for arg in "$@"; do
   case "$arg" in
     --build|-b) FORCE_BUILD=true ;;
+    -h|--help)
+      cat <<'EOF'
+Usage: dev-docker.sh [--build|-b]
+
+Build and run Trinket in a linux/amd64 Docker container against the
+Firestore emulator running on the Mac host.
+
+Options:
+  --build, -b   Force rebuild the Docker image before running
+
+Prerequisites:
+  ./emulator.sh must be running in a separate terminal.
+EOF
+      exit 0
+      ;;
   esac
 done
 

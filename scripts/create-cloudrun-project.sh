@@ -21,6 +21,32 @@ set -euo pipefail
 #   NEW_GOOGLE_CLOUD_PROJECT=trinket-oss-dev-123 bash scripts/create-cloudrun-project.sh
 #   NEW_GOOGLE_CLOUD_PROJECT=trinket-oss-dev-123 BILLING_ACCOUNT_ID=ABCDEF-123456-789ABC bash scripts/create-cloudrun-project.sh
 
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  cat <<'EOF'
+Usage: create-cloudrun-project.sh
+
+Create a fresh Google Cloud project configured for Trinket Cloud Run deployments.
+Enables required APIs and creates a Firestore Native database.
+
+Required:
+  NEW_GOOGLE_CLOUD_PROJECT   New GCP project ID
+
+Optional:
+  GOOGLE_CLOUD_REGION        Cloud Run region (default: us-central1)
+  FIRESTORE_LOCATION         Firestore multi-region location (default: nam5)
+  BILLING_ACCOUNT_ID         Billing account to link (e.g. 000000-000000-000000)
+  PROJECT_NAME               Human-readable display name (default: project ID)
+  FOLDER_ID                  Parent folder ID
+  ORGANIZATION_ID            Parent organization ID
+  WRITE_ENV                  Set to 1 to write .env.cloudrun-new-project
+
+Examples:
+  NEW_GOOGLE_CLOUD_PROJECT=trinket-oss-dev-123 bash scripts/create-cloudrun-project.sh
+  NEW_GOOGLE_CLOUD_PROJECT=myproject BILLING_ACCOUNT_ID=ABCDEF-123456-789ABC bash scripts/create-cloudrun-project.sh
+EOF
+  exit 0
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 

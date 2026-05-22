@@ -23,6 +23,37 @@ set -euo pipefail
 #   export SKIP_BUILD=1                    # reuse the existing image tag
 #   export ADMIN_EMAILS='["you@example.com"]'  # JSON array of admin emails
 
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  cat <<'EOF'
+Usage: deploy-cloudrun.sh
+
+Deploy Trinket to Google Cloud Run (Firestore backend, no MongoDB).
+
+Required (set in .env or environment):
+  GOOGLE_CLOUD_PROJECT     GCP project ID
+  FIREBASE_CLIENT_CONFIG   Firebase client config JSON
+  SESSION_PASSWORD         Cookie encryption password (min 32 chars; prompted if unset)
+
+Optional:
+  GOOGLE_CLOUD_REGION      Region (default: us-central1)
+  SERVICE_NAME             Cloud Run service name (default: trinket)
+  REPO_NAME                Artifact Registry repo name (default: trinket)
+  MEMORY                   Container memory (default: 512Mi)
+  MAX_INSTANCES            Max instances (default: 10)
+  SKIP_BUILD               Set to 1 to reuse the existing image tag
+  GOOGLE_CLIENT_ID         Google OAuth 2.0 client ID (prompted if unset)
+  GOOGLE_CLIENT_SECRET     Google OAuth 2.0 client secret
+
+Prerequisites:
+  gcloud CLI installed and authenticated (gcloud auth login)
+  A GCP project with billing enabled
+
+ADMIN_EMAILS is managed in the Cloud Run console and is preserved automatically
+across deployments — do not set it here.
+EOF
+  exit 0
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [[ -f "${SCRIPT_DIR}/.env" ]]; then
   # shellcheck source=.env

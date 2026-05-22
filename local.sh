@@ -5,6 +5,19 @@
 
 set -euo pipefail
 
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  cat <<'EOF'
+Usage: local.sh
+
+Run Trinket locally against the Firestore emulator (no Docker).
+
+Requires:
+  nvm with the project's Node version installed
+  ./emulator.sh running in a separate terminal
+EOF
+  exit 0
+fi
+
 export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 # shellcheck source=/dev/null
 [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"

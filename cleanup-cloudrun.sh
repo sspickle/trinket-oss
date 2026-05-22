@@ -15,6 +15,26 @@ set -euo pipefail
 #   export REPO_NAME=trinket      # Artifact Registry repo name (default: trinket)
 #   export DRY_RUN=1              # print what would be deleted without deleting
 
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  cat <<'EOF'
+Usage: cleanup-cloudrun.sh
+
+Delete old Cloud Run revisions and Artifact Registry images,
+keeping the most recent KEEP_COUNT of each.
+
+Required (set in .env or environment):
+  GOOGLE_CLOUD_PROJECT     GCP project ID
+
+Optional:
+  KEEP_COUNT               Number of revisions/images to keep (default: 3)
+  SERVICE_NAME             Cloud Run service name (default: trinket)
+  REPO_NAME                Artifact Registry repo name (default: trinket)
+  GOOGLE_CLOUD_REGION      Region (default: us-central1)
+  DRY_RUN                  Set to 1 to print what would be deleted without deleting
+EOF
+  exit 0
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [[ -f "${SCRIPT_DIR}/.env" ]]; then
   source "${SCRIPT_DIR}/.env"
