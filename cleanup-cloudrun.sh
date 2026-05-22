@@ -80,10 +80,9 @@ echo "=== Artifact Registry images ==="
 
 # List digests sorted newest-first
 ALL_DIGESTS=$(gcloud artifacts docker images list "${IMAGE_PATH}" \
-  --include-tags \
-  --sort-by="~createTime" \
-  --format="value(digest)" \
-  --project="${GOOGLE_CLOUD_PROJECT}" 2>/dev/null | sort -u || true)
+  --format="value(createTime,version)" \
+  --project="${GOOGLE_CLOUD_PROJECT}" 2>/dev/null \
+  | grep -v "^Listing" | sort -r | awk '{print $2}' || true)
 
 if [[ -z "${ALL_DIGESTS}" ]]; then
   echo "No images found."
@@ -100,6 +99,7 @@ else
         gcloud artifacts docker images delete \
           "${IMAGE_PATH}@${digest}" \
           --delete-tags \
+          --async \
           --project="${GOOGLE_CLOUD_PROJECT}" \
           --quiet 2>/dev/null || echo "    (skipped)"
       fi
