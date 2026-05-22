@@ -31,6 +31,19 @@ fi
 
 GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT:?Set GOOGLE_CLOUD_PROJECT in .env or the environment}"
 
+# Validate FIREBASE_CLIENT_CONFIG is present and is valid JSON with required fields
+if [[ -z "${FIREBASE_CLIENT_CONFIG:-}" ]]; then
+  echo "Error: FIREBASE_CLIENT_CONFIG is not set. Add it to .env." >&2
+  exit 1
+fi
+if ! node -e "
+  var cfg = JSON.parse(process.env.FIREBASE_CLIENT_CONFIG);
+  var missing = ['apiKey','authDomain','projectId','appId'].filter(function(k){return !cfg[k];});
+  if (missing.length) { console.error('FIREBASE_CLIENT_CONFIG missing fields: ' + missing.join(', ')); process.exit(1); }
+" 2>&1; then
+  exit 1
+fi
+
 if [[ -z "${SESSION_PASSWORD:-}" ]]; then
   read -r -s -p "SESSION_PASSWORD (min 32 chars): " SESSION_PASSWORD
   echo
