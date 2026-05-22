@@ -251,13 +251,15 @@ NODE_APP_INSTANCE: cloudrun
 GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT}
 NODE_CONFIG: '{"app":{"url":{"hostname":"${HOSTNAME}"}}}'
 GOOGLE_CALLBACK_URL: https://${HOSTNAME}/auth/google/callback
-FIREBASE_CLIENT_CONFIG: '${FIREBASE_CLIENT_CONFIG:-{}}'
 YAML
 
+# Set FIREBASE_CLIENT_CONFIG via --update-env-vars using a custom delimiter to
+# avoid YAML parser issues with JSON values containing colons and quotes.
 gcloud run services update "${SERVICE_NAME}" \
   --region="${GOOGLE_CLOUD_REGION}" \
   --project="${GOOGLE_CLOUD_PROJECT}" \
   --env-vars-file="${PATCH_ENV_VARS_FILE}" \
+  --update-env-vars "^|^FIREBASE_CLIENT_CONFIG=${FIREBASE_CLIENT_CONFIG:-{}}" \
   --quiet
 
 echo ""
