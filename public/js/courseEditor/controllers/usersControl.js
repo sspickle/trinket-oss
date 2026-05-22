@@ -215,13 +215,13 @@
 
                 if (invitationsSent) {
                   $("#invitations-sent-messages").notify(
-                    invitationsSent + " new invitation(s) sent."
+                    invitationsSent + " student(s) added. They can now sign up with their email address."
                     , { className : 'success' }
                   );
                 }
                 else {
                   $("#invitations-sent-messages").notify(
-                    "No new invitations sent."
+                    "No new students added."
                     , { className : 'warning' }
                   );
                 }
