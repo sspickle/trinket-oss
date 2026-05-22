@@ -259,7 +259,7 @@ gcloud run services update "${SERVICE_NAME}" \
   --region="${GOOGLE_CLOUD_REGION}" \
   --project="${GOOGLE_CLOUD_PROJECT}" \
   --env-vars-file="${PATCH_ENV_VARS_FILE}" \
-  --update-env-vars "^|^FIREBASE_CLIENT_CONFIG=${FIREBASE_CLIENT_CONFIG:-{}}" \
+  --update-env-vars "^|^FIREBASE_CLIENT_CONFIG=${FIREBASE_CLIENT_CONFIG}" \
   --quiet
 
 echo ""
