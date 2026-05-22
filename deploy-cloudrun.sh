@@ -237,7 +237,6 @@ NODE_APP_INSTANCE: cloudrun
 GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT}
 NODE_CONFIG: '{"app":{"url":{"hostname":"${HOSTNAME}"}},"auth":{"firebase":{"clientConfig":${FIREBASE_CLIENT_CONFIG:-{}}}}}'
 GOOGLE_CALLBACK_URL: https://${HOSTNAME}/auth/google/callback
-ADMIN_EMAILS: '${ADMIN_EMAILS:-[]}'
 YAML
 
 gcloud run services update "${SERVICE_NAME}" \
