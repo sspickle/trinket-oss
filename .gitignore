@@ -16,6 +16,7 @@ Vagrantfile
 
 config/runtime.json
 config/runtime.json.tmp-*
+config/firebase-service-account.json
 config/development.yaml
 config/development.yml
 config/development.json
