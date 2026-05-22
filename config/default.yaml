@@ -17,6 +17,19 @@ features:
     pygame: false      # Requires Pygame backend
     R: false           # Requires R backend
 
+auth:
+  # Emails that bypass the instructor/roster check and have full admin access
+  adminEmails: []
+  firebase:
+    projectId: ''   # Your GCP/Firebase project ID — override in local.yaml
+    clientConfig:   # Firebase web SDK config from Project Settings > Your apps
+      apiKey: ''
+      authDomain: ''
+      projectId: ''
+      storageBucket: ''
+      messagingSenderId: ''
+      appId: ''
+
 app:
   siteName: 'Trinket'
   siteUrl: ''

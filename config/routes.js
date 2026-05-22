@@ -19,11 +19,11 @@ routes = [
     enable : true
   },
   {
-    route : 'GET /signup pages.signup',
-    html  : 'signup.html'
+    route    : 'GET /signup pages.redirect',
+    redirect : '/login'
   },
   {
-    route : 'GET /login pages.login',
+    route : 'GET /login auth.loginPage',
     html  : 'login.html',
     config : {
       validate : {
@@ -43,58 +43,9 @@ routes = [
     config : { auth: 'session' }
   },
   {
-    route   : 'POST /login users.login',
-    cookie  : true,
-    success : {
-      redirect : '/home'
-    },
-    fail    : {
-      redirect : '/login'
-    },
-    config  : {
-      pre : [{ method : helpers.lowerUserFields }],
-      validate : {
-        payload : {
-          email    : Joi.string().required(),
-          password : Joi.string()
-        }
-      }
-    }
-  },
-  {
-    route    : 'GET /logout users.logout',
-    cookie  : true,
+    route    : 'GET /logout auth.logout',
+    cookie   : true,
     redirect : '/'
-  },
-  {
-    route : 'POST /users users.create',
-    cookie  : true,
-    success : {
-      redirect : '/welcome'
-    },
-    fail : {
-      redirect : '/{formName}'
-    },
-    config : {
-      pre : [{ method: helpers.lowerUserFields }],
-      validate  : {
-        payload : {
-          formName : Joi.string().required(),
-          fullname : Joi.string().max(50).optional(),
-          username : Joi.string().min(3).max(20).regex(/^[a-z][a-z0-9\-\_]*$/i).optional().invalid(...reservedUsernames),
-          email    : Joi.string().email().required(),
-          password : Joi.string().min(3).regex(/^[\w`~!@#$%^&*+=:;'"<>,.?{}\-\/\(\)\[\]\|\\\s]*$/).required(),
-          interest : Joi.string().allow('').optional(),
-          next     : Joi.string().allow('').optional(),
-          'g-recaptcha-response' : recaptchaValidation
-        },
-        language : {
-          username : {
-            "regular expression" : "Usernames must begin with a letter and must only contain alphanumeric characters and hyphens (-)."
-          }
-        }
-      }
-    }
   },
   {
     route : 'GET /account-deleted users.deleted'
@@ -122,7 +73,7 @@ routes = [
     html   : 'courses/create.html',
     config : {
       auth: 'session',
-      pre : [helpers.coursesEnabled]
+      pre : [helpers.coursesEnabled, 'isInstructor(user)']
     }
   },
   {
@@ -135,7 +86,7 @@ routes = [
     },
     config : {
       auth: 'session',
-      pre : [helpers.coursesEnabled],
+      pre : [helpers.coursesEnabled, 'isInstructor(user)'],
       validate: {
         payload : {
           name: Joi.string().min(1).max(140).required(),
@@ -250,87 +201,6 @@ routes = [
     html  : 'users/account.html',
     config : {
       auth: 'session'
-    }
-  },
-  {
-    route : 'GET /forgot-pass pages.forgotPasswordForm',
-    html  : 'users/forgotpass.html'
-  },
-  {
-    route : 'POST /send-pass-reset users.sendPassReset',
-    html  : 'users/sendpassreset.html',
-    fail  : {
-      redirect : '/forgot-pass'
-    },
-    config : {
-      pre : [{ method : helpers.lowerUserFields }],
-      validate : {
-        payload : {
-          email : Joi.string().email().required(),
-          'g-recaptcha-response' : recaptchaValidation
-        }
-      }
-    }
-  },
-  {
-    route : 'GET /reset-pass users.resetPasswordForm',
-    html  : 'users/resetpass.html',
-    fail  : {
-      redirect : '/forgot-pass'
-    },
-    config : {
-      validate : {
-        query : {
-          key : Joi.string().required()
-        }
-      }
-    }
-  },
-  {
-    route : 'POST /save-pass users.savePassword',
-    html  : 'users/savepass.html',
-    fail  : {
-      redirect : '/forgot-pass'
-    },
-    config : {
-      validate : {
-        payload : {
-          key             : Joi.string().required(),
-          password        : Joi.string().required(),
-          password_verify : Joi.string().required()
-        }
-      }
-    }
-  },
-  {
-    route : 'GET /activate-account users.activateAccountForm',
-    html  : 'users/activateaccount.html',
-    fail  : {
-      redirect : '/{redirectTo}'
-    },
-    config : {
-      validate : {
-        query : {
-          key : Joi.string().allow('').optional() // optional to allow for meaningful redirects
-        }
-      }
-    }
-  },
-  {
-    route : 'POST /activate-account users.activateAccount',
-    success : {
-      redirect : '/welcome'
-    },
-    fail  : {
-      redirect : '/{redirectTo}'
-    },
-    config : {
-      validate : {
-        payload : {
-          key      : Joi.string().required(),
-          password : Joi.string().required()
-        }
-      }
     }
   },
   {

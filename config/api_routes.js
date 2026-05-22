@@ -8,11 +8,28 @@ var recaptchaValidation = (config.app.recaptcha && config.app.recaptcha.secretke
   : Joi.string().allow('').optional();
 
 module.exports = [
+  // Firebase Auth session endpoint — exchanges an ID token for a server session
   {
-    // create a new course
+    route  : 'POST /api/auth/session auth.session',
+    config : {
+      cors : true,
+      validate : {
+        payload : {
+          idToken : Joi.string().required()
+        }
+      }
+    }
+  },
+  {
+    route  : 'POST /api/auth/logout auth.logout',
+    config : { cors : true }
+  },
+  {
+    // create a new course — instructors and admins only
     route  : 'POST /api/courses course.createCourse',
     config : {
       auth: 'session',
+      pre : ['isInstructor(user)'],
       validate : {
         payload : {
           name           : Joi.string().max(140).required(),
@@ -897,6 +914,7 @@ module.exports = [
     route : 'POST /api/trinkets trinket.create',
     config : {
       cors : true,
+      pre  : ['isApproved(user)'],
       payload : {
         maxBytes : 10 * (1024 * 1024) // 10MB
       },
@@ -922,7 +940,7 @@ module.exports = [
   {
     route : 'POST /api/trinkets/{trinketId}/forks trinket.createFork',
     config : {
-      pre : ['trinket(params.trinketId)'],
+      pre : ['isApproved(user)', 'trinket(params.trinketId)'],
       payload : {
         maxBytes : 10 * (1024 * 1024) // 10MB
       },
@@ -1093,33 +1111,6 @@ module.exports = [
         payload : {
           email : Joi.string().email().required(),
           page  : Joi.string().required()
-        }
-      }
-    }
-  },
-  {
-    route : 'POST /api/users/login users.login',
-    cookie : true,
-    config  : {
-      pre : [{ method : helpers.lowerUserFields }, { method : function(req, reply) { return reply(true) }, assign : 'encryptRoles' }],
-      validate : {
-        payload : {
-          email    : Joi.string().required(),
-          password : Joi.string()
-        }
-      }
-    }
-  },
-  {
-    route : 'POST /api/users users.create',
-    cookie: true,
-    config : {
-      pre : [{ method: helpers.lowerUserFields }],
-      validate  : {
-        payload : {
-          email    : Joi.string().email().required(),
-          password : Joi.string().min(3).regex(/^[\w`~!@#$%^&*+=:;'"<>,.?{}\-\/\(\)\[\]\|\\\s]*$/).required(),
-          interest : Joi.string().allow('').optional()
         }
       }
     }
@@ -1310,80 +1301,6 @@ module.exports = [
   },
   {
     route : 'POST /api/ohnoes admin.ohnoes'
-  },
-  {
-    route : 'POST /api/users/password users.changePassword',
-    config : {
-      auth: 'session',
-      validate : {
-        payload : {
-          currentPassword : Joi.string().required(),
-          newPassword : Joi.string().required(),
-          confirmPassword : Joi.string().required()
-        }
-      }
-    }
-  },
-  {
-    route : 'POST /api/users/email users.sendEmailChange', // checks for dups, sends confirmation
-    config : {
-      auth: 'session',
-      pre : [{ method : helpers.lowerUserFields }],
-      validate : {
-        payload : {
-          email : Joi.string().email().required()
-        }
-      }
-    }
-  },
-  {
-    route : 'GET /change-email users.changeEmail', // actually change user email
-    success : {
-      redirect: 'account/email'
-    },
-    fail : {
-      redirect: 'account/email'
-    },
-    config : {
-      validate : {
-        query : {
-          key : Joi.string().required()
-        }
-      }
-    }
-  },
-  {
-    route : 'GET /api/users/resendEmailChange users.resendEmailChange',
-    config : {
-      auth: 'session'
-    }
-  },
-  {
-    route : 'POST /api/users/verify-email users.sendEmailVerification',
-    config : {
-      auth: 'session',
-      validate : {
-        payload : {
-          'g-recaptcha-response' : recaptchaValidation
-        }
-      }
-    }
-  },
-  {
-    route : 'GET /verify-email users.verifyEmail', // actually verify user email
-    success : {
-      redirect: 'account/email'
-    },
-    fail : {
-      redirect: 'account/email'
-    },
-    config : {
-      validate : {
-        query : {
-          key : Joi.string().required()
-        }
-      }
-    }
   },
   {
     route : 'POST /api/admin/user/{userId} admin.updateUser',
