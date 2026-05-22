@@ -474,7 +474,12 @@ module.exports = [
       pre  : ['course(params.courseId)'],
       validate : {
         payload : {
-          emailList : Joi.array().required()
+          students : Joi.array().items(
+            Joi.object({
+              email : Joi.string().required(),
+              name  : Joi.string().allow('').optional()
+            })
+          ).required()
         }
       }
     }

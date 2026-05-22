@@ -37,10 +37,21 @@
       $scope.showUser       = {};
       $scope.showInvitation = {};
 
-      var emailList; // array
       $scope.inviteForm = {
-        emailList : ""
+        studentList : ""
       };
+
+      function parseCsvInput(text) {
+        return text.split('\n')
+          .map(function(line) { return line.trim(); })
+          .filter(function(line) { return line.length > 0; })
+          .map(function(line) {
+            var parts = line.split(',').map(function(p) { return p.trim(); });
+            var email = parts[parts.length - 1];
+            var name  = parts.length > 1 ? parts.slice(0, -1).join(' ') : '';
+            return { email: email, name: name };
+          });
+      }
 
       $scope.addingUser         = false;
       $scope.sendingInvitations = false;
@@ -183,15 +194,15 @@
       $scope.inviteUsersToCourse = function() {
         $scope.sendingInvitations = true;
 
-        emailList = $scope.inviteForm.emailList.split('\n');
-        $scope.course.customPOST({ emailList : emailList }, "invitations")
+        var students = parseCsvInput($scope.inviteForm.studentList);
+        $scope.course.customPOST({ students : students }, "invitations")
           .then(
             function(result) {
               var invitationsSent = 0;
 
               $timeout(function() {
-                $scope.sendingInvitations   = false;
-                $scope.inviteForm.emailList = "";
+                $scope.sendingInvitations    = false;
+                $scope.inviteForm.studentList = "";
               }, 500);
 
               if (result.success) {

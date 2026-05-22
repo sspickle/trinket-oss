@@ -318,12 +318,12 @@
 
               <div class="row">
                 <div class="small-12 columns">
-                  <p>Paste a list of email addresses, one per line.</p>
+                  <p>Paste a list of students, one per line. Each line can be an email address alone, or <strong>First, Last, email</strong>. You can also paste directly from a spreadsheet column.</p>
                 </div>
               </div>
               <div class="row" data-equalizer data-equalizer-mq="large-up">
                 <div class="medium-12 large-6 columns" data-equalizer-watch>
-                  <textarea rows="4" ng-model="inviteForm.emailList"></textarea>
+                  <textarea rows="5" placeholder="Jane, Smith, jane@example.com&#10;Bob, Jones, bob@example.com&#10;noemail@example.com" ng-model="inviteForm.studentList"></textarea>
                 </div>
                 <div class="medium-12 large-6 columns" data-equalizer-watch>
                   <button type="submit" class="button small secondary bottom" ng-class="{'disabled':sendingInvitations}">
@@ -426,7 +426,7 @@
               <div class="small-6 columns invitation-info">
                 <a ng-click="toggleShowInvitation(invitation)"><i ng-class="showInvitation[user.userId] ? 'fa fa-minus-square-o' : 'fa fa-plus-square-o'"></i></a>
                 <i ng-show="invitation.status == 'invalid'" title="Invalid email address" class="fa fa-exclamation-circle alert"></i>
-                <span id="invalid-{{ invitation.id }}" class="course-user-display-name" editable-text="invitation.email" blur="submit" onbeforesave="updateInvitationEmail(invitation, $data)">{{ invitation.email }}</span>
+                <span id="invalid-{{ invitation.id }}" class="course-user-display-name" editable-text="invitation.email" blur="submit" onbeforesave="updateInvitationEmail(invitation, $data)">{{ invitation.name ? invitation.name + ' &lt;' + invitation.email + '&gt;' : invitation.email }}</span>
               </div>
               <div class="small-6 columns invitation-actions text-right">
                 <a ng-hide="working[invitation.email] || resent[invitation.email]" class="course-user-actions-link" data-options="align:left" data-dropdown="invitation-{{ invitation.id }}"><i class="fa fa-ellipsis-v"></i></a>
