@@ -2,7 +2,7 @@ services:
   app:
     build: .
     platform: linux/arm64
-    image: trinket/app:latest
+    image: trinket-gcr/app:latest
     ports:
       - 3000:3000
     container_name: trinket
