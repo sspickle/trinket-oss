@@ -22,51 +22,81 @@ the base; `gcr-firebase` is kept rebased on top of it.
 |------|---------|
 | Docker Desktop | https://www.docker.com/products/docker-desktop |
 | Node.js 20 | https://nodejs.org (only needed to run tests locally) |
-| Firebase CLI | `npm install -g firebase-tools` |
-| gcloud CLI | https://cloud.google.com/sdk/docs/install (only needed for deployment) |
 
 ---
 
-## 1. Get credentials from Steve
+## Files to get from Steve
 
-You need access to the Firebase project **trinket-gcr-test**. Ask Steve to:
+| File | Where it goes |
+|------|--------------|
+| `.env` | repo root |
+| `config/local.yaml` | `config/local.yaml` |
+| `config/firebase-service-account.json` | `config/firebase-service-account.json` |
 
-- Add your Google account to the Firebase project (so the emulator auth works)
-- Share the **Firebase web app config** — a JSON object from the Firebase
-  console (Project Settings → Your apps → SDK config). It looks like:
-  ```json
-  {
-    "apiKey": "...",
-    "authDomain": "trinket-gcr-test.firebaseapp.com",
-    "projectId": "trinket-gcr-test",
-    ...
-  }
-  ```
+Both files are gitignored and must be shared out-of-band (1Password, encrypted
+email, etc.). Never commit them.
 
 ---
 
-## 2. Create your `.env` file
+## Firestore connection modes
 
-Create `.env` in the repo root (it is gitignored):
+### Mode A — Shared Firestore (recommended for development)
 
-```bash
-# Required — any string of 32+ random characters
-SESSION_PASSWORD='change-this-to-a-secure-password-min-32-chars'
+Connects directly to the real `trinket-gcr-test` Firestore project using the
+service account key. All developers see the same data.
 
-# Required — the Firebase web app config JSON (single line, single-quoted)
-FIREBASE_CLIENT_CONFIG='{"apiKey":"...","authDomain":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"..."}'
-
-# Optional — your email, to get admin access in development
-ADMIN_EMAILS='["you@example.com"]'
-
-# Optional — Google OAuth (only needed if testing the Google login flow)
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
+**`config/local.yaml`** — use the real project and key:
+```yaml
+db:
+  backend: firestore
+  firestore:
+    projectId: trinket-gcr-test
+    keyFilename: config/firebase-service-account.json
+  redis:
+    enabled: false
 ```
 
+**`docker-compose.yml`** — comment out the emulator line:
+```yaml
+# FIRESTORE_EMULATOR_HOST: host.docker.internal:8080
+```
+
+Then build and run:
+```bash
+docker-compose build
+docker-compose up
+```
+
+### Mode B — Local emulator (isolated, empty database)
+
+Useful for experiments that shouldn't touch shared data. Requires the
+Firebase CLI.
+
+```bash
+npm install -g firebase-tools
+firebase emulators:start --only firestore --project demo-trinket
+```
+
+**`config/local.yaml`** — point at the local emulator project:
+```yaml
+db:
+  backend: firestore
+  firestore:
+    projectId: demo-trinket
+  redis:
+    enabled: false
+```
+
+**`docker-compose.yml`** — ensure the emulator line is uncommented:
+```yaml
+FIRESTORE_EMULATOR_HOST: host.docker.internal:8080
+```
+
+The emulator UI is at http://localhost:4000.
+
 ---
 
-## 3. Create `config/local.yaml`
+## Full `config/local.yaml` reference
 
 ```yaml
 app:
@@ -78,14 +108,15 @@ app:
   plugins:
     session:
       cookieOptions:
-        password: 'change-this-to-a-secure-password-min-32-chars'
+        password: 'same-value-as-SESSION_PASSWORD-in-.env'
         domain: ''
         isSecure: false
 
 db:
   backend: firestore
   firestore:
-    projectId: demo-trinket
+    projectId: trinket-gcr-test          # or demo-trinket for emulator mode
+    keyFilename: config/firebase-service-account.json  # omit for emulator mode
   redis:
     enabled: false
 
@@ -103,68 +134,31 @@ auth:
       appId: "..."
 ```
 
-Use the same password in both `local.yaml` and `.env`.
-
 ---
 
-## 4. Start the Firestore emulator
+## Running tests
 
-In a separate terminal:
-
-```bash
-firebase emulators:start --only firestore --project demo-trinket
-```
-
-The emulator runs on port **8080** by default. The Docker container is
-pre-configured to connect to it at `host.docker.internal:8080`.
-
-The emulator UI is available at http://localhost:4000 — useful for
-inspecting documents while developing.
-
----
-
-## 5. Build and run
-
-```bash
-# First time (or after Dockerfile / package.json changes)
-docker-compose build
-
-# Start the app
-docker-compose up
-```
-
-Visit **http://localhost:3000**.
-
-> **Note:** CSS is pre-built into the image. If you change `*.scss` files,
-> run `npm run build:css` on the host and restart the container.
-
----
-
-## 6. Running tests
-
-Tests run against the Firestore backend unit tests only (no live connection
-needed):
+No live Firestore connection needed:
 
 ```bash
 npm test
-# or just the Firestore adapter tests:
+# or just the Firestore adapter:
 npx mocha test/lib/db/firestore-backend.js
 ```
 
 ---
 
-## 7. Making yourself an admin
+## Admin access
 
-Add your email to `ADMIN_EMAILS` in `.env` and `auth.adminEmails` in
-`config/local.yaml`, then restart the container. Admin status controls
-who can assign the "Associate" role in course management.
+Add your email to `auth.adminEmails` in `config/local.yaml` and to
+`ADMIN_EMAILS` in `.env`, then restart the container. This controls who
+can assign the "Associate" role in course management.
 
 ---
 
-## 8. Deploying to Cloud Run
+## Deploying to Cloud Run
 
-See the comments at the top of `deploy-cloudrun.sh` for prerequisites.
-The short version:
+See the comments at the top of `deploy-cloudrun.sh`. The short version:
 
 ```bash
 export GOOGLE_CLOUD_PROJECT=your-gcp-project-id
@@ -173,5 +167,5 @@ export SESSION_PASSWORD='...'
 ```
 
 `ADMIN_EMAILS` and `FIREBASE_CLIENT_CONFIG` are managed as Cloud Run
-environment variables in the console — the deploy script does not
+environment variables in the GCP console — the deploy script does not
 overwrite them, so console edits survive redeployment.
