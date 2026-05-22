@@ -1,0 +1,15 @@
+# Rules from .gitignore apply
+#!include:.gitignore
+
+# Not needed to build the image
+test/
+*.md
+.nvmrc
+.bowerrc
+.agignore
+Vagrantfile
+deploy-cloudrun.sh
+cleanup-cloudrun.sh
+scripts/
+SETUP.md
+docker-compose.yml
