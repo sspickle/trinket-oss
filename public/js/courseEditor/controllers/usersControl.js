@@ -322,6 +322,17 @@
         });
       }
 
+      $scope.uploadCsvFile = function(file) {
+        if (!file) { return; }
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          $scope.$apply(function() {
+            $scope.inviteForm.studentList = e.target.result;
+          });
+        };
+        reader.readAsText(file);
+      };
+
       $scope.generateAccessCode = function() {
         $scope.generatingCode = true;
         $scope.course.customPOST({ payload : true }, "accessCode")
