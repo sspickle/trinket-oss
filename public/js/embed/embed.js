@@ -1327,7 +1327,7 @@ $('document').ready(function() {
       $.post(url, data)
       .done(function(result) {
         self.setTrinket(result.data);
-        $('#emailToken').val('');
+        self._storeEmailToken(result.data && result.data.shortCode, result.emailToken);
         self.postSave().then(function() {
           if (typeof done === 'function') {
             done(self._trinket);
@@ -1353,13 +1353,31 @@ $('document').ready(function() {
       $.post(url, data)
       .done(function(result) {
         self.setTrinket(result.data);
-        $('#emailToken').val('');
+        self._storeEmailToken(result.data && result.data.shortCode, result.emailToken);
         self.postSave().then(function() {
           if (typeof done === 'function') {
             done(self._trinket);
           }
         });
       });
+    },
+    _storeEmailToken : function(shortCode, token) {
+      var el = $('#emailToken');
+      if (el.length) {
+        el.val(token || '');
+        if (shortCode) el.attr('data-short-code', shortCode);
+      }
+      if (shortCode && token) {
+        try { localStorage.setItem('emailToken:' + shortCode, token); } catch (e) {}
+      }
+    },
+    _getEmailToken : function(shortCode) {
+      var v = $('#emailToken').val();
+      if (v) return v;
+      if (shortCode) {
+        try { return localStorage.getItem('emailToken:' + shortCode) || ''; } catch (e) {}
+      }
+      return '';
     },
     save : function(data, done) {
       var self      = this,
@@ -1712,7 +1730,7 @@ $('document').ready(function() {
           email   : $('#share-email').val(),
           name    : $('#share-yourname').val(),
           replyTo : $('#share-youremail').val(),
-          token   : $('#emailToken').val(),
+          token   : self._getEmailToken(self._trinket && self._trinket.shortCode),
           'g-recaptcha-response' : recaptcha
         }).done(function(data) {
           self.$emailModal.foundation('reveal', 'close');
