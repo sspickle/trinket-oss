@@ -25,11 +25,11 @@ module.exports = [
     config : { cors : true }
   },
   {
-    // create a new course — instructors and admins only
+    // create a new course — instructors, admins, and elevated course staff
     route  : 'POST /api/courses course.createCourse',
     config : {
       auth: 'session',
-      pre : ['isInstructor(user)'],
+      pre : ['canCreateCourse(user)'],
       validate : {
         payload : {
           name           : Joi.string().max(140).required(),
@@ -90,7 +90,7 @@ module.exports = [
     route : 'POST /api/courses/{courseId}/copy course.copyCourse',
     config : {
       auth: 'session',
-      pre  : ['course(params.courseId)'],
+      pre  : ['canCreateCourse(user)', 'course(params.courseId)'],
       validate : {
         payload : {
           name : Joi.string().required()

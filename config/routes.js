@@ -73,7 +73,7 @@ routes = [
     html   : 'courses/create.html',
     config : {
       auth: 'session',
-      pre : [helpers.coursesEnabled, 'isInstructor(user)']
+      pre : [helpers.coursesEnabled, 'canCreateCourse(user)']
     }
   },
   {
@@ -86,7 +86,7 @@ routes = [
     },
     config : {
       auth: 'session',
-      pre : [helpers.coursesEnabled, 'isInstructor(user)'],
+      pre : [helpers.coursesEnabled, 'canCreateCourse(user)'],
       validate: {
         payload : {
           name: Joi.string().min(1).max(140).required(),
@@ -107,7 +107,7 @@ routes = [
     },
     config : {
       auth: 'session',
-      pre:  [helpers.coursesEnabled, 'user(params.userSlug)', {method:helpers.courseBySlug, assign:'course'}]
+      pre:  [helpers.coursesEnabled, 'canCreateCourse(user)', 'user(params.userSlug)', {method:helpers.courseBySlug, assign:'course'}]
     }
   },
   {
