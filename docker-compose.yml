@@ -16,6 +16,10 @@ services:
       NODE_ENV: development
       GOOGLE_CLOUD_PROJECT: demo-trinket
       FIRESTORE_EMULATOR_HOST: host.docker.internal:8080
+      # Auth emulator: server (admin SDK) talks to it via host.docker.internal;
+      # browser is told via FIREBASE_AUTH_EMULATOR_URL (uses localhost).
+      FIREBASE_AUTH_EMULATOR_HOST: host.docker.internal:9099
+      FIREBASE_AUTH_EMULATOR_URL: http://localhost:9099
       SESSION_PASSWORD: ${SESSION_PASSWORD}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}

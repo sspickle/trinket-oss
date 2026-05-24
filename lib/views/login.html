@@ -37,9 +37,14 @@
 <script src="https://www.gstatic.com/firebasejs/ui/6.1.0/firebase-ui-auth__en.js"></script>
 <script>
 (function() {
-  var firebaseConfig = {{ firebaseConfig | json | safe }};
+  var firebaseConfig  = {{ firebaseConfig | json | safe }};
+  var authEmulatorUrl = {{ authEmulatorUrl | json | safe }};
 
   firebase.initializeApp(firebaseConfig);
+
+  if (authEmulatorUrl) {
+    firebase.auth().useEmulator(authEmulatorUrl, { disableWarnings: true });
+  }
 
   var ui = new firebaseui.auth.AuthUI(firebase.auth());
 

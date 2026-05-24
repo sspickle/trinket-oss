@@ -333,6 +333,11 @@
         reader.readAsText(file);
       };
 
+      $scope.openCsvUpload = function() {
+        var el = document.getElementById('csv-upload-input');
+        if (el) { el.click(); }
+      };
+
       $scope.generateAccessCode = function() {
         $scope.generatingCode = true;
         $scope.course.customPOST({ payload : true }, "accessCode")

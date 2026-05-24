@@ -325,7 +325,7 @@
                   <textarea rows="5" placeholder="Jane, Smith, jane@example.com&#10;Bob, Jones, bob@example.com&#10;noemail@example.com" ng-model="inviteForm.studentList"></textarea>
                   <input type="file" accept=".csv,.txt" id="csv-upload-input" style="display:none" onchange="angular.element(this).scope().uploadCsvFile(this.files[0]); this.value=''">
                   <p class="text-center" style="margin-top:0.25rem">
-                    <a href="" ng-click="$event.preventDefault(); document.getElementById('csv-upload-input').click()"><i class="fa fa-upload"></i> Upload CSV file</a>
+                    <a href="" ng-click="openCsvUpload()"><i class="fa fa-upload"></i> Upload CSV file</a>
                   </p>
                 </div>
                 <div class="medium-12 large-6 columns" data-equalizer-watch>
@@ -383,7 +383,7 @@
 
     <div class="row" ng-show="haveInvitations()">
       <div class="large-12 columns">
-        <strong>Pending Invitations</strong>
+        <strong>Pending Students</strong>
       </div>
     </div>
     <div class="row" ng-show="haveInvitations()">
@@ -392,7 +392,6 @@
           <li class="course-user" ng-repeat="(email, invitation) in invitations | orderBy:'email'">
             <div class="row">
               <div class="small-6 columns invitation-info">
-                <a ng-click="toggleShowInvitation(invitation)"><i ng-class="showInvitation[user.userId] ? 'fa fa-minus-square-o' : 'fa fa-plus-square-o'"></i></a>
                 <i ng-show="invitation.status == 'invalid'" title="Invalid email address" class="fa fa-exclamation-circle alert"></i>
                 <span id="invalid-{{ invitation.id }}" class="course-user-display-name" editable-text="invitation.email" blur="submit" onbeforesave="updateInvitationEmail(invitation, $data)">{{ invitation.name ? invitation.name + ' &lt;' + invitation.email + '&gt;' : invitation.email }}</span>
               </div>
@@ -402,25 +401,19 @@
                 <span ng-show="resent[invitation.email]" class="course-user-actions-link"><i class="fa fa-check-circle success"></i></span>
 
                 <ul id="invitation-{{ invitation.id }}" class="f-dropdown text-left" data-dropdown-content>
-                  <li><a ng-hide="invitation.status == 'invalid'" ng-click="resendInvitation(invitation)"><i class="fa fa-envelope-o fa-fw"></i> Resend Invitation</a></li>
                   <li><a ng-show="invitation.status == 'invalid'" ng-click="clickEditable(invitation)"><i class="fa fa-exclamation-circle fa-fw alert"></i> Invalid Email</a></li>
-                  <li><a ng-click="deleteInvitation(invitation)"><i class="fa fa-trash-o fa-fw alert"></i> Delete Invitation</a></li>
+                  <li><a ng-click="deleteInvitation(invitation)"><i class="fa fa-trash-o fa-fw alert"></i> Remove Student</a></li>
                 </ul>
               </div>
             </div>
 
-            <div ng-class="{'show-invitation':showInvitation[invitation.id]}" class="row collapsed">
-              <div class="small-12 columns">
-                <i class="fa fa-link"></i> {{ invitation.acceptUrl }}
-              </div>
-            </div>
           </li>
         </ul>
       </div>
     </div> <!-- end invitation list -->
     <div class="row" ng-show="haveInvitations()">
       <div class="large-12 columns">
-        <p class="smaller">Note: Changing the email address of a pending invitation will send a new email.</p>
+        <p class="smaller">Pending students will be enrolled automatically the first time they sign in with the email address listed above.</p>
       </div>
     </div>
   </div>
