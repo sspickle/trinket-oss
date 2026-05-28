@@ -578,6 +578,13 @@ module.exports = [
     }
   },
   {
+    route : 'GET /api/courses/{courseId}/materials/{materialId}/feedback.csv course.exportMaterialFeedbackCsv',
+    config : {
+      auth: 'session',
+      pre : ['course(params.courseId)']
+    }
+  },
+  {
     route : 'GET /api/submissions/{materialId} course.getUserSubmissionsForMaterial',
     config : {
       auth: 'session'

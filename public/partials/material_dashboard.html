@@ -9,6 +9,12 @@
       </nav>
     </section>
     <div class="right">
+      <a ng-href="/api/courses/{{course.id}}/materials/{{material.id}}/feedback.csv"
+         ng-if="course.id && material.id"
+         class="button small secondary"
+         title="Download all feedback for this assignment as a CSV file">
+        <i class="fa fa-download"></i> Feedback CSV
+      </a>
       <a ng-disabled="!prev.assignment" ng-class="{disabled:!prev.assignment}" ng-click="viewAssignment(prev.assignment.lesson, prev.assignment.material)" class="button small">Previous</a>
       <a ng-disabled="!next.assignment" ng-class="{disabled:!next.assignment}" ng-click="viewAssignment(next.assignment.lesson, next.assignment.material)" class="button small">Next</a>
     </div>

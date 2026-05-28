@@ -1,5 +1,40 @@
 # Trinket Firestore Adapter — Implementation Log
 
+## Application stack
+
+Server framework: Hapi 20, booted from [app.js](app.js). Plain CommonJS — no
+TypeScript or bundler for app code (Vite is used only to compile SCSS).
+
+- Templates: Nunjucks in [lib/views/](lib/views/), rendered via `@hapi/vision`.
+- Static assets: [public/](public/) served via `@hapi/inert`.
+- Auth: Passport (Google OAuth + local strategy) with `@hapi/yar` cookie
+  sessions. Session cache backend is selected by `config.app.plugins.session.cache.backend`
+  (`memory` / `mongoose` / `firestore`).
+- Data: Mongoose-shaped models in [lib/models/](lib/models/) talking through a
+  backend factory ([lib/db/backend-factory.js](lib/db/backend-factory.js)) that
+  swaps between Mongoose and Firestore at boot based on `config.db.backend`.
+- Validation: Joi schemas declared on routes (not in controllers).
+
+### Routing
+
+Routes are configured centrally, not per-controller. The full URL surface
+lives in [config/routes.js](config/routes.js) as an array of compact specs:
+
+```js
+{ route: 'PUT /api/users/{userId} users.updateProfile',
+  config: { auth: 'session', validate: { payload: {...} } } }
+```
+
+The `route` string encodes method + path + `controller.handlerName`. At boot,
+[app.js](app.js) registers them all with one `server.route(config.routes)` call.
+
+Controllers in [lib/controllers/](lib/controllers/) export bare handler
+functions keyed by name (e.g. `module.exports = { createCourse, getCourse, ... }`).
+They know nothing about URLs, auth requirements, or payload validation — those
+are declared in the routes table. To add or trace an endpoint, expect to edit
+both files: [config/routes.js](config/routes.js) for the URL contract and the
+matching controller for the handler logic.
+
 ## Architecture decision
 
 **Option A**: Firestore backend translates MongoDB-style query syntax internally.
@@ -311,6 +346,50 @@ export MAX_INSTANCES=20                # default: 10
 | `NODE_CONFIG` | deploy.sh | JSON override injecting `app.url.hostname` |
 | `SESSION_PASSWORD` | Secret Manager | Cookie signing key (32+ chars) |
 | `PORT` | Cloud Run | Set automatically; app.js reads it |
+
+---
+
+## Future considerations
+
+### WASM Python trinket type (Pyodide)
+
+Idea: add a new trinket `lang` (e.g. `python-wasm` or `pyodide`) that runs real
+CPython in the browser via Pyodide, alongside the existing Skulpt-backed
+`python` and the server-side `python3`. Motivation is to get real-CPython
+semantics (numpy, pandas, matplotlib) without operating the `python3` sandbox
+container — which fits the GCR/Firestore direction of eliminating self-hosted
+backend services.
+
+How the trinket-type system is wired (mostly declarative):
+
+- [config/constants.js](config/constants.js) — `trinketLangs` enum (used by
+  the Mongoose schema on `Trinket.lang`).
+- [config/default.yaml](config/default.yaml) — `features.trinkets` toggle plus
+  capability lists (`autorun`, `outputOnly`, `toggleCode`, `downloadable`,
+  `configurable`, `runOption`, ...).
+- [lib/views/embed/{lang}.html](lib/views/embed/) — the embed iframe template,
+  extends `embed/base.html`.
+- [lib/views/trinket/{lang}/](lib/views/trinket/) — the create/edit page
+  templates.
+- [public/js/embed/{lang}.js](public/js/embed/) — the runtime bridge that
+  wires the editor, console, run button to the sandbox.
+
+The config plumbing and templates are mechanical (~1 day). The hard part is
+the runtime bridge JS — for Pyodide that means loading it in a Web Worker,
+wiring stdin/stdout/stderr to the existing console UI, deciding what to do
+about `turtle` (Skulpt has a DOM-canvas implementation; Pyodide does not),
+and asset/image handling (Emscripten MEMFS vs Skulpt's FS shim).
+
+Rough effort tiers:
+
+| Scope | Estimate |
+|---|---|
+| Skeleton: prints to console, errors show. No graphics, turtle, input(), assets. | ~1 day |
+| Useful for non-graphics work: stop button, input(), matplotlib. | ~3–5 days |
+| Feature parity with current Skulpt Python (turtle, assets, unittests). | ~2–4 weeks |
+
+`features.trinkets` already gates visibility per-deployment, so a new type can
+ship disabled and be enabled per-environment.
 
 ---
 
